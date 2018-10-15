@@ -19,7 +19,10 @@ FILE fqName:<root> fileName:/objectReferenceInFieldInitializer.kt
     PROPERTY name:b visibility:private modality:FINAL flags:val
       FIELD PROPERTY_BACKING_FIELD name:b type:kotlin.String visibility:private flags:final
         EXPRESSION_BODY
-          CONST String type=kotlin.String value=1234$
+          STRING_CONCATENATION type=kotlin.String
+            CONST String type=kotlin.String value=1234
+            CALL '<get-a>(): String' type=kotlin.String origin=GET_PROPERTY
+              $this: GET_VAR 'this@A: A' type=A origin=null
       FUN DEFAULT_PROPERTY_ACCESSOR name:<get-b> visibility:private modality:FINAL <> ($this:A) returnType:kotlin.String flags:
         correspondingProperty: PROPERTY name:b visibility:private modality:FINAL flags:val
         $this: VALUE_PARAMETER name:<this> type:A flags:
