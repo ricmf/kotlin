@@ -55,20 +55,19 @@ fun ScriptEngine.loadFile(path: String) {
 }
 
 fun ScriptEngine.runAndRestoreContext(
+    globalObject: ScriptObjectMirror = eval("this") as ScriptObjectMirror,
+    originalState: Map<String, Any?> = globalObject.toMapWithAllMembers(),
     f: ScriptEngine.() -> Any?
 ): Any? {
-    val globalObject = eval("this") as ScriptObjectMirror
-    val before = globalObject.toMapWithAllMembers()
-
     return try {
         this.f()
     } finally {
         val after = globalObject.toMapWithAllMembers()
-        val diff = after.entries - before.entries
+        val diff = after.entries - originalState.entries
 
 
         diff.forEach {
-            globalObject[it.key] = before[it.key] ?: ScriptRuntime.UNDEFINED
+            globalObject[it.key] = originalState[it.key] ?: ScriptRuntime.UNDEFINED
         }
     }
 }
@@ -81,8 +80,15 @@ abstract class AbstractNashornJsTestChecker {
 
     private var engineCache: ScriptEngine? = null
 
+    private var globalObject: ScriptObjectMirror? = null
+    private var originalState: Map<String, Any?>? = null
+
     protected val engine
-        get() = engineCache ?: createScriptEngineForTest().also { engineCache = it }
+        get() = engineCache ?: createScriptEngineForTest().also {
+            engineCache = it
+            globalObject = it.eval("this") as ScriptObjectMirror
+            originalState = globalObject?.toMapWithAllMembers()
+        }
 
     fun check(
         files: List<String>,
@@ -124,7 +130,7 @@ abstract class AbstractNashornJsTestChecker {
 
         beforeRun()
 
-        return engine.runAndRestoreContext {
+        return engine.runAndRestoreContext(globalObject!!, originalState!!) {
             files.forEach(engine::loadFile)
             engine.f()
         }
