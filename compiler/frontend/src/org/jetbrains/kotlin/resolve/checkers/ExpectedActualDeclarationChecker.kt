@@ -28,10 +28,6 @@ import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.hasActualModifier
 import org.jetbrains.kotlin.resolve.*
-import org.jetbrains.kotlin.resolve.calls.callUtil.getType
-import org.jetbrains.kotlin.resolve.constants.CompileTimeConstant
-import org.jetbrains.kotlin.resolve.constants.IntegerValueConstant
-import org.jetbrains.kotlin.resolve.constants.IntegerValueTypeConstant
 import org.jetbrains.kotlin.resolve.descriptorUtil.isAnnotationConstructor
 import org.jetbrains.kotlin.resolve.descriptorUtil.isPrimaryConstructorOfInlineClass
 import org.jetbrains.kotlin.resolve.descriptorUtil.module
@@ -196,7 +192,7 @@ object ExpectedActualDeclarationChecker : DeclarationChecker {
             if (nonTrivialUnfulfilled.isNotEmpty()) {
                 val classDescriptor =
                     (descriptor as? TypeAliasDescriptor)?.expandedType?.constructor?.declarationDescriptor as? ClassDescriptor
-                        ?: (descriptor as ClassDescriptor)
+                            ?: (descriptor as ClassDescriptor)
                 trace.report(
                     Errors.NO_ACTUAL_CLASS_MEMBER_FOR_EXPECTED_CLASS.on(
                         reportOn, classDescriptor, nonTrivialUnfulfilled
@@ -212,8 +208,8 @@ object ExpectedActualDeclarationChecker : DeclarationChecker {
             val expected = compatibility[Compatible]!!.first()
             if (expected is ClassDescriptor && expected.kind == ClassKind.ANNOTATION_CLASS) {
                 val actualConstructor =
-                    (descriptor as? ClassDescriptor)?.constructors?.singleOrNull()
-                        ?: (descriptor as? TypeAliasDescriptor)?.constructors?.singleOrNull()?.underlyingConstructorDescriptor
+                    (descriptor as? ClassDescriptor)?.constructors?.singleOrNull() ?:
+                    (descriptor as? TypeAliasDescriptor)?.constructors?.singleOrNull()?.underlyingConstructorDescriptor
                 val expectedConstructor = expected.constructors.singleOrNull()
                 if (expectedConstructor != null && actualConstructor != null) {
                     checkAnnotationConstructors(expectedConstructor, actualConstructor, trace, reportOn)
