@@ -28,6 +28,7 @@ import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.hasActualModifier
 import org.jetbrains.kotlin.resolve.*
+import org.jetbrains.kotlin.resolve.constants.CompileTimeConstant
 import org.jetbrains.kotlin.resolve.descriptorUtil.isAnnotationConstructor
 import org.jetbrains.kotlin.resolve.descriptorUtil.isPrimaryConstructorOfInlineClass
 import org.jetbrains.kotlin.resolve.descriptorUtil.module
@@ -192,7 +193,7 @@ object ExpectedActualDeclarationChecker : DeclarationChecker {
             if (nonTrivialUnfulfilled.isNotEmpty()) {
                 val classDescriptor =
                     (descriptor as? TypeAliasDescriptor)?.expandedType?.constructor?.declarationDescriptor as? ClassDescriptor
-                            ?: (descriptor as ClassDescriptor)
+                        ?: (descriptor as ClassDescriptor)
                 trace.report(
                     Errors.NO_ACTUAL_CLASS_MEMBER_FOR_EXPECTED_CLASS.on(
                         reportOn, classDescriptor, nonTrivialUnfulfilled
@@ -208,8 +209,8 @@ object ExpectedActualDeclarationChecker : DeclarationChecker {
             val expected = compatibility[Compatible]!!.first()
             if (expected is ClassDescriptor && expected.kind == ClassKind.ANNOTATION_CLASS) {
                 val actualConstructor =
-                    (descriptor as? ClassDescriptor)?.constructors?.singleOrNull() ?:
-                    (descriptor as? TypeAliasDescriptor)?.constructors?.singleOrNull()?.underlyingConstructorDescriptor
+                    (descriptor as? ClassDescriptor)?.constructors?.singleOrNull()
+                        ?: (descriptor as? TypeAliasDescriptor)?.constructors?.singleOrNull()?.underlyingConstructorDescriptor
                 val expectedConstructor = expected.constructors.singleOrNull()
                 if (expectedConstructor != null && actualConstructor != null) {
                     checkAnnotationConstructors(expectedConstructor, actualConstructor, trace, reportOn)
@@ -254,15 +255,9 @@ object ExpectedActualDeclarationChecker : DeclarationChecker {
                 val actualParameter = DescriptorToSourceUtils.descriptorToDeclaration(actualParameterDescriptor)
 
                 val expectedValue = trace.bindingContext.get(BindingContext.COMPILE_TIME_VALUE, expectedParameter.defaultValue)
-                if (actualParameter is PsiAnnotationMethod) {
-                    val actualValue = (actualParameter as? PsiAnnotationMethod)?.defaultValue
-                    //TODO: check for arrays and annotations
-                    if (actualValue !is PsiLiteralExpressionImpl) continue
-                    val expectedType = trace.bindingContext.get(BindingContext.EXPECTED_EXPRESSION_TYPE, expectedParameter.defaultValue)
-                    if ((actualValue as? PsiLiteralExpressionImpl)?.value
-                        == expectedType?.let { expectedValue?.getValue(it) }
-                    ) continue
-                }
+
+                if (javaDefaultValueEqualsExpectedValue(actualParameter, trace, expectedParameter, expectedValue)) continue
+
                 val actualValue = (actualParameter as? KtParameter)?.let { parameter ->
                     trace.bindingContext.get(BindingContext.COMPILE_TIME_VALUE, parameter.defaultValue)
                 }
@@ -272,5 +267,21 @@ object ExpectedActualDeclarationChecker : DeclarationChecker {
                 }
             }
         }
+    }
+
+    private fun javaDefaultValueEqualsExpectedValue(
+        actualParameter: PsiElement?, trace: BindingTrace, expectedParameter: KtParameter, expectedValue: CompileTimeConstant<*>?
+    ): Boolean {
+        val actualPsi = (actualParameter as? PsiAnnotationMethod)?.defaultValue ?: return false
+        val expectedType = trace.bindingContext.get(BindingContext.EXPECTED_EXPRESSION_TYPE, expectedParameter.defaultValue) ?: return false
+        val actualValue = when (actualPsi) {
+            is PsiLiteral -> actualPsi.value
+            is PsiCall -> {
+                //TODO: arrays and annotations
+                return false
+            }
+            else -> return false
+        }
+        return (actualValue == expectedValue?.getValue(expectedType))
     }
 }
